@@ -28,6 +28,10 @@
                 background-color: #f9f9f9;
             }
 
+            svg text {
+                pointer-events: none;
+            }
+
             pre {
                 text-align: left;
                 font-size: 14px;
@@ -147,6 +151,11 @@
                     .curve(d3.curveMonotoneX)
                     .x(d => d.x)
                     .y(d => d.y);
+
+                const legend = svg.append("text")
+                    .attr("x", 10)
+                    .attr("y", 20)
+                    .text("Drag the points to change the curve. Double click to remove a point.");
 
                 const path = svg.append("path")
                     .datum(points)
