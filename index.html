@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Draggable Points Graph</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- You can paste the following element in a static page to use this as a component -->
+    <div style="display: contents;">
+        <script src="https://d3js.org/d3.v7.min.js"></script>
+        <style>
+            svg {
+                border: 1px solid #ccc;
+                background-color: #f9f9f9;
+            }
+
+            pre {
+                text-align: left;
+                font-size: 14px;
+                white-space: pre-wrap;
+            }
+
+            .container {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                flex-direction: column;
+                border: 1px solid #ccc;
+                padding: 1rem;
+                width: fit-content;
+                border-radius: 0.5rem;
+                gap: 0.3rem;
+            }
+
+            .scale-inputs {
+                display: flex;
+                flex-direction: row;
+                justify-content: center;
+                align-items: center;
+                gap: 0.5rem;
+            }
+
+            .draggable {
+                fill: steelblue;
+                cursor: pointer;
+            }
+
+            .midpoint {
+                fill: green;
+                cursor: pointer;
+                opacity: 0.7;
+            }
+
+            .resampled {
+                fill: orange;
+                opacity: 0.8;
+                pointer-events: none;
+            }
+
+            .resampled-line {
+                stroke: orange;
+                stroke-width: 2;
+                fill: none;
+            }
+
+            .midpoint-text {
+                fill: green;
+                font-size: 14px;
+                stroke: white;
+                text-anchor: middle;
+                dominant-baseline: central;
+                pointer-events: none;
+            }
+        </style>
+        <div class="container">
+            <div>
+                <label for="sampleCount">Number of samples:</label>
+                <input type="number" id="sampleCount" value="10" min="2" max="100">
+            </div>
+            <div class="scale-inputs">
+                <div>
+                    <label for="yScale">y max:</label>
+                    <input type="text" id="yScale" value="10">
+                </div>
+                <div>
+                    <label for="xScale">x max:</label>
+                    <input type="text" id="xScale" value="10">
+                </div>
+            </div>
+            <svg id="graph" width="500" height="500"></svg>
+            <br>
+            <button id="sendData">Send Points</button>
+            <div id="points">
+            </div>
+
+            <script>
+                const DISPLAY_DATA_AFTER_SEND = true;
+                const POST_URL = 'https://httpbin.org/post';
+                const INITIAL_POINTS_COUNT = 5;
+                const width = 500;
+                const height = 500;
+                const MIN_X_DISTANCE = 1;
+                let points = Array.from({ length: 5 }, (_, i) => ({
+                    x: i * (width / (INITIAL_POINTS_COUNT - 1)),
+                    y: height - 10,
+                }));
+
+                let resampledPoints = [];
+
+                const svg = d3.select("#graph");
+
+                const line = d3.line()
+                    .curve(d3.curveMonotoneX)
+                    .x(d => d.x)
+                    .y(d => d.y);
+
+                const path = svg.append("path")
+                    .datum(points)
+                    .attr("d", line)
+                    .attr("stroke", "black")
+                    .attr("stroke-width", 2)
+                    .attr("fill", "none");
+
+                const resampledLine = svg.append("path")
+                    .attr("class", "resampled-line");
+
+                function updateMidpoints() {
+                    const midpoints = points.slice(1).map((p, i) => ({
+                        x: (points[i].x + p.x) / 2,
+                        y: (points[i].y + p.y) / 2,
+                        index: i
+                    }));
+
+                    const midpointCircles = svg.selectAll(".midpoint")
+                        .data(midpoints, d => d.index);
+
+                    const midpointTexts = svg.selectAll(".midpoint-text")
+                        .data(midpoints, d => d.index);
+
+                    midpointCircles.enter()
+                        .append("circle")
+                        .attr("class", "midpoint")
+                        .attr("cx", d => d.x)
+                        .attr("cy", d => d.y)
+                        .attr("r", 7)
+                        .on("click", function (event, d) {
+                            points.splice(d.index + 1, 0, { x: d.x, y: d.y });
+                            updateGraph();
+                        });
+
+                    midpointCircles
+                        .attr("cx", d => d.x)
+                        .attr("cy", d => d.y);
+
+                    midpointCircles.exit().remove();
+
+                    midpointTexts.enter()
+                        .append("text")
+                        .attr("class", "midpoint-text")
+                        .attr("x", d => d.x)
+                        .attr("y", d => d.y)
+                        .text("+");
+
+                    midpointTexts
+                        .attr("x", d => d.x)
+                        .attr("y", d => d.y)
+                        .text("+");
+
+                    midpointTexts.exit().remove();
+                }
+
+                function resampleCurve() {
+                    const sampleCount = parseInt(document.getElementById('sampleCount').value);
+                    const sampleStep = width / (sampleCount - 1);
+                    resampledPoints = [];
+
+                    for (let i = 0; i < sampleCount; i++) {
+                        const x = i * sampleStep;
+                        let y = getYAtX(x);
+                        resampledPoints.push({ x, y });
+                    }
+
+                    const resampledCircles = svg.selectAll(".resampled")
+                        .data(resampledPoints);
+
+                    resampledCircles.enter()
+                        .append("circle")
+                        .attr("class", "resampled")
+                        .attr("r", 5)
+                        .merge(resampledCircles)
+                        .attr("cx", d => d.x)
+                        .attr("cy", d => d.y);
+
+                    resampledCircles.exit().remove();
+
+                    resampledLine.datum(resampledPoints)
+                        .attr("d", d3.line().x(d => d.x).y(d => d.y));
+                }
+
+                function getYAtX(x) {
+                    const totalLength = path.node().getTotalLength();
+                    let closestPoint = null;
+                    let closestDistance = Infinity;
+
+                    let low = 0;
+                    let high = totalLength;
+                    // this is a binary search to find the closest point to the given x
+                    // it's CRAZY INEFFICIENT, but it works for this small dataset
+                    // and I was too lazy to find a sensible way to do it with this library
+                    // or to do the smoothing by hand and then interpolate the points
+                    while (low <= high) {
+                        const mid = (low + high) / 2;
+                        const point = path.node().getPointAtLength(mid);
+
+                        if (Math.abs(point.x - x) < closestDistance) {
+                            closestDistance = Math.abs(point.x - x);
+                            closestPoint = point;
+                        }
+
+                        if (point.x < x) {
+                            low = mid + 1;
+                        } else if (point.x > x) {
+                            high = mid - 1;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    return closestPoint ? closestPoint.y : 0;
+                }
+
+                function updateGraph() {
+                    points.sort((a, b) => a.x - b.x);
+                    for (let i = 1; i < points.length; i++) {
+                        if (points[i].x - points[i - 1].x < MIN_X_DISTANCE) {
+                            points[i].x = points[i - 1].x + MIN_X_DISTANCE;
+                        }
+                    }
+
+                    path.datum(points).attr("d", line);
+
+                    const circles = svg.selectAll(".draggable")
+                        .data(points, (d, i) => i);
+
+                    circles.enter()
+                        .append("circle")
+                        .attr("class", "draggable")
+                        .attr("r", 10)
+                        .merge(circles)
+                        .attr("cx", d => d.x)
+                        .attr("cy", d => d.y)
+                        .call(d3.drag()
+                            .on("drag", function (event, d) {
+                                const i = points.indexOf(d);
+                                if (i === 0) {
+                                    d.y = Math.max(0, Math.min(height, event.y));
+                                } else if (i === points.length - 1) {
+                                    d.y = Math.max(0, Math.min(height, event.y));
+                                } else {
+                                    const prevX = points[i - 1].x;
+                                    const nextX = points[i + 1].x;
+                                    d.x = Math.max(prevX + MIN_X_DISTANCE, Math.min(nextX - MIN_X_DISTANCE, event.x));
+                                    d.y = Math.max(0, Math.min(height, event.y));
+                                }
+
+                                d3.select(this)
+                                    .attr("cx", d.x)
+                                    .attr("cy", d.y);
+
+                                path.attr("d", line);
+                                updateMidpoints();
+                                resampleCurve();
+                            })
+                        )
+                        .on("dblclick", function (event, d) {
+                            points = points.filter(p => p !== d);
+                            updateGraph();
+                        });
+
+                    circles.exit().remove();
+
+                    updateMidpoints();
+                    resampleCurve();
+                }
+
+                updateGraph();
+
+                document.getElementById('sendData').addEventListener('click', () => {
+                    const yScale = parseInt(document.getElementById('yScale').value);
+                    const xScale = parseInt(document.getElementById('xScale').value);
+                    const scaledPoints = resampledPoints.map(p => ({
+                        x: p.x / width * xScale,
+                        y: (height - p.y) / height * yScale
+                    }));
+
+                    const packagedData = {
+                        maxX: xScale,
+                        maxY: yScale,
+                        points: scaledPoints
+                    };
+
+                    if (DISPLAY_DATA_AFTER_SEND) {
+                        document.getElementById('points').innerHTML = `<h3>Sent data</h3><pre>${JSON.stringify(packagedData, null, 2)}</pre>`;
+                    }
+
+                    fetch(POST_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(scaledPoints)
+                    })
+                        .then(response => response.json())
+                        .then(result => alert('Data sent successfully!'))
+                        .catch(error => alert('Error sending data: ' + error));
+                });
+
+                document.getElementById('sampleCount').addEventListener('input', resampleCurve);
+            </script>
+        </div>
+    </div>
+</body>
+
+</html>
