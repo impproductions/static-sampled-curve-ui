@@ -13,7 +13,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 12pt;
+            font-size: 10pt;
         }
     </style>
 </head>
@@ -107,7 +107,7 @@
             </div>
             <div class="section">
                 <label for="postUrl">Post url:</label>
-                <input type="text" id="postUrl" value="https://httpbin.org/post"  class="post-url" />
+                <input type="text" id="postUrl" value="https://httpbin.org/post" class="post-url" />
             </div>
             <div class="section scale-inputs">
                 <div>
@@ -121,12 +121,15 @@
             </div>
             <svg id="graph" width="500" height="500"></svg>
             <br>
+            <div>
+                <label for="displayData">Display sent data</label>
+                <input type="checkbox" id="displayData" checked>
+            </div>
             <button id="sendData">Send Points</button>
             <div id="points">
             </div>
 
             <script>
-                const DISPLAY_DATA_AFTER_SEND = true;
                 const INITIAL_POINTS_COUNT = 5;
                 const width = 500;
                 const height = 500;
@@ -330,8 +333,13 @@
                         points: scaledPoints
                     };
 
-                    if (DISPLAY_DATA_AFTER_SEND) {
+                    const displayData = document.getElementById('displayData').checked;
+
+                    if (displayData) {
                         document.getElementById('points').innerHTML = `<h3>Sent data</h3><pre>${JSON.stringify(packagedData, null, 2)}</pre>`;
+                        setTimeout(() => {
+                            document.getElementById('points').innerHTML = '';
+                        }, 1500);
                     }
 
                     const postUrl = document.getElementById('postUrl').value;
