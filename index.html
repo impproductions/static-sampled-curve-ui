@@ -136,7 +136,7 @@
                 const MIN_X_DISTANCE = 1;
                 let points = Array.from({ length: 5 }, (_, i) => ({
                     x: i * (width / (INITIAL_POINTS_COUNT - 1)),
-                    y: height - 10,
+                    y: height / 2,
                 }));
 
                 let resampledPoints = [];
@@ -322,9 +322,10 @@
                 document.getElementById('sendData').addEventListener('click', () => {
                     const yScale = parseInt(document.getElementById('yScale').value);
                     const xScale = parseInt(document.getElementById('xScale').value);
+                    // the vertical middle should rescale to 0, actual 0 to max, actual max to -max
                     const scaledPoints = resampledPoints.map(p => ({
                         x: p.x / width * xScale,
-                        y: (height - p.y) / height * yScale
+                        y: -(p.y - height / 2) / height * (yScale * 2)
                     }));
 
                     const packagedData = {
@@ -337,9 +338,9 @@
 
                     if (displayData) {
                         document.getElementById('points').innerHTML = `<h3>Sent data</h3><pre>${JSON.stringify(packagedData, null, 2)}</pre>`;
-                        setTimeout(() => {
-                            document.getElementById('points').innerHTML = '';
-                        }, 1500);
+                        // setTimeout(() => {
+                        //     document.getElementById('points').innerHTML = '';
+                        // }, 1500);
                     }
 
                     const postUrl = document.getElementById('postUrl').value;
