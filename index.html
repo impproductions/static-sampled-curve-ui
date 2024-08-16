@@ -13,6 +13,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            font-size: 12pt;
         }
     </style>
 </head>
@@ -84,20 +85,38 @@
                 dominant-baseline: central;
                 pointer-events: none;
             }
+
+            .section {
+                display: flex;
+                width: 100%;
+                justify-content: center;
+                align-items: center;
+            }
+
+            .post-url {
+                font-family: 'Courier New', Courier, monospace;
+                flex-grow: 1;
+                margin-left: 1rem;
+                font-size: 1rem;
+            }
         </style>
         <div class="container">
-            <div>
+            <div class="section">
                 <label for="sampleCount">Number of samples:</label>
-                <input type="number" id="sampleCount" value="10" min="2" max="100">
+                <input type="number" id="sampleCount" value="10" min="2" max="100" />
             </div>
-            <div class="scale-inputs">
+            <div class="section">
+                <label for="postUrl">Post url:</label>
+                <input type="text" id="postUrl" value="https://httpbin.org/post"  class="post-url" />
+            </div>
+            <div class="section scale-inputs">
                 <div>
                     <label for="yScale">y max:</label>
-                    <input type="text" id="yScale" value="10">
+                    <input type="text" id="yScale" value="10" />
                 </div>
                 <div>
                     <label for="xScale">x max:</label>
-                    <input type="text" id="xScale" value="10">
+                    <input type="text" id="xScale" value="10" />
                 </div>
             </div>
             <svg id="graph" width="500" height="500"></svg>
@@ -108,7 +127,6 @@
 
             <script>
                 const DISPLAY_DATA_AFTER_SEND = true;
-                const POST_URL = 'https://httpbin.org/post';
                 const INITIAL_POINTS_COUNT = 5;
                 const width = 500;
                 const height = 500;
@@ -316,7 +334,9 @@
                         document.getElementById('points').innerHTML = `<h3>Sent data</h3><pre>${JSON.stringify(packagedData, null, 2)}</pre>`;
                     }
 
-                    fetch(POST_URL, {
+                    const postUrl = document.getElementById('postUrl').value;
+
+                    fetch(postUrl, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
