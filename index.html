@@ -59,8 +59,13 @@
             }
 
             .draggable {
-                fill: steelblue;
+                fill: rgb(121, 195, 255);
                 cursor: pointer;
+            }
+
+            .disabled {
+                fill: grey;
+                cursor: not-allowed;
             }
 
             .midpoint {
@@ -115,12 +120,12 @@
             </div>
             <div class="section scale-inputs">
                 <div>
-                    <label for="yScale">y max:</label>
-                    <input type="text" id="yScale" value="10" />
+                    <label for="xSpan">x span:</label>
+                    <input type="text" id="xSpan" value="10" />
                 </div>
                 <div>
-                    <label for="xScale">x max:</label>
-                    <input type="text" id="xScale" value="10" />
+                    <label for="ySpan">y span:</label>
+                    <input type="text" id="ySpan" value="10" />
                 </div>
             </div>
             <svg id="graph" width="500" height="500"></svg>
@@ -292,13 +297,17 @@
                         .merge(circles)
                         .attr("cx", d => d.x)
                         .attr("cy", d => d.y)
+                        .attr("class", (d, i) =>
+                            i === 0 || i === points.length - 1 ? "draggable disabled" : "draggable"
+                        )
                         .call(d3.drag()
                             .on("drag", function (event, d) {
                                 const i = points.indexOf(d);
+                                // constraints
                                 if (i === 0) {
-                                    d.y = Math.max(0, Math.min(height, event.y));
+                                    d.y = 250;
                                 } else if (i === points.length - 1) {
-                                    d.y = Math.max(0, Math.min(height, event.y));
+                                    d.y = 250;
                                 } else {
                                     const prevX = points[i - 1].x;
                                     const nextX = points[i + 1].x;
@@ -329,17 +338,21 @@
                 updateGraph();
 
                 document.getElementById('sendData').addEventListener('click', () => {
-                    const yScale = parseInt(document.getElementById('yScale').value);
-                    const xScale = parseInt(document.getElementById('xScale').value);
+                    const ySpan = parseInt(document.getElementById('ySpan').value);
+                    const yHalfSpan = ySpan / 2;
+                    const xSpan = parseInt(document.getElementById('xSpan').value);
                     // the vertical middle should rescale to 0, actual 0 to max, actual max to -max
                     const scaledPoints = resampledPoints.map(p => ({
-                        x: p.x / width * xScale,
-                        y: -(p.y - height / 2) / height * (yScale * 2)
+                        x: p.x / width * xSpan,
+                        y: -(p.y - height / 2) / height * (yHalfSpan * 2)
+                    })).map(p => ({
+                        x: Math.round(p.x * 100) / 100,
+                        y: Math.round(p.y * 100) / 100
                     }));
 
                     const packagedData = {
-                        maxX: xScale,
-                        maxY: yScale,
+                        xSpan: xSpan,
+                        ySpan: ySpan,
                         points: scaledPoints
                     };
 
